@@ -18,6 +18,7 @@ from utils import (
     check_deload_triggers,
     analyze_block_progress
 )
+from demo_data import load_demo_data, clear_demo_data, get_demo_stats
 
 # Seitenkonfiguration
 st.set_page_config(
@@ -89,17 +90,32 @@ def main():
         /* Aptos Mono Schriftart */
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;600;700&display=swap');
 
-        /* Aptos Mono für ALLE Texte */
-        html, body, * {
+        /* Monospace NUR für spezifische Content-Elemente (NICHT für UI-Elemente) */
+        .stMarkdown p,
+        .stMarkdown h1,
+        .stMarkdown h2,
+        .stMarkdown h3,
+        .stMarkdown h4,
+        .stMarkdown h5,
+        .stMarkdown h6,
+        .stMarkdown li,
+        .stTextInput input,
+        .stNumberInput input,
+        .stTextArea textarea,
+        [data-testid="stMetricLabel"],
+        [data-testid="stMetricValue"],
+        .stDataFrame,
+        .stTable {
             font-family: 'Aptos Mono', 'Roboto Mono', 'Courier New', monospace !important;
         }
 
-        /* Material Icons behalten ihre Schriftart (für Arrows, etc.) */
-        .material-icons,
-        [class*="material-icons"],
-        span[class*="icon"],
-        svg {
-            font-family: 'Material Icons' !important;
+        /* UI-Elemente bleiben bei System-Font (für Icons) */
+        button, select, details, summary,
+        [data-baseweb],
+        [role="button"],
+        .stButton,
+        .stSelectbox label {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
         }
 
         /* Mobile Optimierungen */
@@ -1173,10 +1189,47 @@ def statistics_page():
 def export_page():
     st.header("Export")
 
+    # Demo-Daten Sektion
+    st.subheader("🎓 Demo-Modus (für Prüfer)")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("📊 Demo-Daten laden", use_container_width=True):
+            with st.spinner("Lade Demo-Trainingsdaten..."):
+                try:
+                    num_exercises = load_demo_data(db)
+                    st.success(f"✅ {num_exercises} Demo-Übungen mit 8 Wochen Trainingshistorie geladen!")
+                    st.info("💡 Gehe zu 'Statistiken' um die Daten zu analysieren")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Fehler beim Laden: {e}")
+
+    with col2:
+        if st.button("🗑️ Demo-Daten löschen", use_container_width=True):
+            with st.spinner("Lösche Demo-Daten..."):
+                try:
+                    num_deleted = clear_demo_data(db)
+                    if num_deleted > 0:
+                        st.success(f"✅ {num_deleted} Demo-Übungen gelöscht")
+                        st.rerun()
+                    else:
+                        st.info("Keine Demo-Daten vorhanden")
+                except Exception as e:
+                    st.error(f"Fehler beim Löschen: {e}")
+
+    # Demo-Statistiken anzeigen
+    demo_stats = get_demo_stats(db)
+    if demo_stats['demo_exercises'] > 0:
+        st.info(f"📈 Aktuell geladen: {demo_stats['demo_exercises']} Demo-Übungen, "
+                f"{demo_stats['total_workouts']} Workouts, {demo_stats['total_sets']} Sets")
+
+    st.divider()
+
     exercises = db.get_all_exercises()
 
     if not exercises:
-        st.warning("Keine Daten vorhanden. Erstelle Trainingspläne und Übungen.")
+        st.warning("Keine Daten vorhanden. Erstelle Trainingspläne und Übungen oder lade Demo-Daten.")
         return
 
     st.subheader("CSV Export")
