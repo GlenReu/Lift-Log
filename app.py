@@ -139,7 +139,7 @@ def main():
 
     page = st.sidebar.radio(
         "Navigation",
-        ["Training", "Trainingspläne", "Statistiken"],
+        ["Training", "Übungen", "Trainingspläne", "Statistiken"],
         label_visibility="collapsed"
     )
 
@@ -151,12 +151,227 @@ def main():
 
     if page == "Training":
         training_page()
+    elif page == "Übungen":
+        exercises_page()
     elif page == "Trainingspläne":
         training_plans_page()
     elif page == "Statistiken":
         statistics_page()
     elif page == "Export":
         export_page()
+
+
+def exercises_page():
+    st.header("Übungen")
+
+    exercises = db.get_all_exercises()
+
+    # Neue Übung erstellen
+    with st.expander("➕ Neue Übung erstellen", expanded=False):
+        with st.form("new_exercise_form"):
+            ex_name = st.text_input("Name*", placeholder="z.B. Bankdrücken")
+            ex_desc = st.text_area("Beschreibung", placeholder="Optional...")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                ex_type = st.selectbox(
+                    "Übungstyp*",
+                    options=['compound', 'isolation', 'machine'],
+                    format_func=lambda x: {
+                        'compound': 'Compound (freie Grundübung)',
+                        'isolation': 'Isolation',
+                        'machine': 'Maschine'
+                    }[x],
+                    index=0
+                )
+            with col2:
+                target_sets = st.number_input("Ziel-Sets", min_value=1, value=3, step=1)
+
+            col3, col4, col5 = st.columns(3)
+            with col3:
+                rep_min = st.number_input("Min. Reps", min_value=1, value=5, step=1)
+            with col4:
+                rep_max = st.number_input("Max. Reps", min_value=1, value=12, step=1)
+            with col5:
+                weight_inc = st.number_input("Gewichtsinkrement (kg)", min_value=0.25, value=1.25, step=0.25)
+
+            pause_dur = st.number_input("Pausendauer (Sek.)", min_value=30, value=180, step=30)
+
+            submitted = st.form_submit_button("Übung erstellen")
+
+            if submitted:
+                if ex_name.strip():
+                    if rep_max < rep_min:
+                        st.error("Max. Reps muss >= Min. Reps sein")
+                    else:
+                        try:
+                            db.add_exercise(
+                                ex_name.strip(),
+                                ex_desc.strip(),
+                                rep_min,
+                                rep_max,
+                                20.0,  # min_weight - default
+                                pause_dur,
+                                ex_type,
+                                target_sets,
+                                weight_inc
+                            )
+                            st.success(f"Übung '{ex_name}' erstellt")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Fehler: {e}")
+                else:
+                    st.warning("Bitte Namen eingeben")
+
+    st.divider()
+
+    # Alle Übungen anzeigen
+    st.subheader("Alle Übungen")
+
+    if not exercises:
+        st.info("Keine Übungen vorhanden")
+    else:
+        for ex in exercises:
+            type_labels = {'compound': '🏋️ Compound', 'isolation': '💪 Isolation', 'machine': '🤖 Maschine'}
+            type_label = type_labels.get(ex.get('exercise_type', 'compound'), '🏋️ Compound')
+
+            with st.expander(f"{type_label} - {ex['name']}", expanded=False):
+                # Details anzeigen
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**Typ:** {type_label}")
+                    st.markdown(f"**Rep-Range:** {ex.get('rep_range_min', 5)}-{ex.get('rep_range_max', 12)} Reps")
+                    st.markdown(f"**Ziel-Sets:** {ex.get('target_sets', 3)}")
+                with col2:
+                    st.markdown(f"**Gewichtsinkrement:** {ex.get('weight_increment', 1.25)} kg")
+                    st.markdown(f"**Pausendauer:** {ex.get('pause_duration', 180)} Sek.")
+
+                if ex.get('description'):
+                    st.caption(f"_{ex['description']}_")
+
+                # Statistik-Link
+                workouts = db.get_workouts_for_exercise(ex['id'])
+                if workouts:
+                    st.info(f"📊 {len(workouts)} Trainingseinheiten absolviert")
+
+                st.divider()
+
+                # Bearbeiten/Löschen
+                col_edit, col_delete = st.columns(2)
+
+                with col_edit:
+                    edit_key = f"edit_ex_{ex['id']}"
+                    if edit_key not in st.session_state:
+                        st.session_state[edit_key] = False
+
+                    if st.button("✎ Bearbeiten", key=f"btn_edit_{ex['id']}", use_container_width=True):
+                        st.session_state[edit_key] = not st.session_state[edit_key]
+                        st.rerun()
+
+                with col_delete:
+                    if st.button("🗑️ Löschen", key=f"btn_del_{ex['id']}", use_container_width=True):
+                        try:
+                            db.delete_exercise(ex['id'])
+                            st.success("Übung gelöscht")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Fehler: {e}")
+
+                # Bearbeiten-Dialog
+                if st.session_state.get(edit_key, False):
+                    with st.form(f"edit_form_{ex['id']}"):
+                        st.markdown("### Übung bearbeiten")
+
+                        new_name = st.text_input("Name*", value=ex['name'])
+                        new_desc = st.text_area("Beschreibung", value=ex.get('description', ''))
+
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            new_type = st.selectbox(
+                                "Übungstyp*",
+                                options=['compound', 'isolation', 'machine'],
+                                format_func=lambda x: {
+                                    'compound': 'Compound (freie Grundübung)',
+                                    'isolation': 'Isolation',
+                                    'machine': 'Maschine'
+                                }[x],
+                                index=['compound', 'isolation', 'machine'].index(ex.get('exercise_type', 'compound')),
+                                key=f"type_edit_{ex['id']}"
+                            )
+                        with col2:
+                            new_target = st.number_input(
+                                "Ziel-Sets",
+                                min_value=1,
+                                value=ex.get('target_sets', 3),
+                                step=1,
+                                key=f"sets_edit_{ex['id']}"
+                            )
+
+                        col3, col4, col5 = st.columns(3)
+                        with col3:
+                            new_rep_min = st.number_input(
+                                "Min. Reps",
+                                min_value=1,
+                                value=ex.get('rep_range_min', 5),
+                                step=1,
+                                key=f"repmin_edit_{ex['id']}"
+                            )
+                        with col4:
+                            new_rep_max = st.number_input(
+                                "Max. Reps",
+                                min_value=1,
+                                value=ex.get('rep_range_max', 12),
+                                step=1,
+                                key=f"repmax_edit_{ex['id']}"
+                            )
+                        with col5:
+                            new_inc = st.number_input(
+                                "Gewichtsinkrement (kg)",
+                                min_value=0.25,
+                                value=ex.get('weight_increment', 1.25),
+                                step=0.25,
+                                key=f"inc_edit_{ex['id']}"
+                            )
+
+                        new_pause = st.number_input(
+                            "Pausendauer (Sek.)",
+                            min_value=30,
+                            value=ex.get('pause_duration', 180),
+                            step=30,
+                            key=f"pause_edit_{ex['id']}"
+                        )
+
+                        col_save, col_cancel = st.columns(2)
+                        with col_save:
+                            save = st.form_submit_button("💾 Speichern", use_container_width=True)
+                        with col_cancel:
+                            cancel = st.form_submit_button("❌ Abbrechen", use_container_width=True)
+
+                        if save:
+                            if new_name.strip():
+                                try:
+                                    db.update_exercise(
+                                        ex['id'],
+                                        name=new_name.strip(),
+                                        description=new_desc.strip(),
+                                        rep_range_min=new_rep_min,
+                                        rep_range_max=new_rep_max,
+                                        pause_duration=new_pause,
+                                        exercise_type=new_type,
+                                        target_sets=new_target,
+                                        weight_increment=new_inc
+                                    )
+                                    st.session_state[edit_key] = False
+                                    st.success("Übung aktualisiert")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Fehler: {e}")
+                            else:
+                                st.warning("Name darf nicht leer sein")
+
+                        if cancel:
+                            st.session_state[edit_key] = False
+                            st.rerun()
 
 
 def training_plans_page():
