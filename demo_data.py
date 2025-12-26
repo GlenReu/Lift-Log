@@ -163,19 +163,14 @@ def load_demo_data(db: TrainingDatabase):
     - RPE-Werte die den Fortschritt widerspiegeln
     """
 
+    # 0. Erst alle alten Demo-Daten löschen (sauberer Neustart)
+    clear_demo_data(db)
+
     # 1. Trainingspläne erstellen
     plan_ids = {}
     for plan_name in DEMO_TRAINING_PLANS.keys():
-        # Check ob Plan schon existiert
-        existing_plans = db.get_all_training_plans()
-        exists = any(p['name'] == plan_name for p in existing_plans)
-
-        if not exists:
-            plan_id = db.add_training_plan(plan_name, f"Demo-Plan: {plan_name}")
-            plan_ids[plan_name] = plan_id
-        else:
-            plan_id = next(p['id'] for p in existing_plans if p['name'] == plan_name)
-            plan_ids[plan_name] = plan_id
+        plan_id = db.add_training_plan(plan_name, f"Demo-Plan: {plan_name}")
+        plan_ids[plan_name] = plan_id
 
     # 2. Übungen erstellen und zu Plänen hinzufügen
     exercise_map = {}  # {exercise_name: (exercise_id, plan_id, start_weight)}
@@ -184,24 +179,18 @@ def load_demo_data(db: TrainingDatabase):
         plan_id = plan_ids[plan_name]
 
         for i, ex_def in enumerate(exercises):
-            # Check ob Übung existiert
-            existing = db.get_all_exercises()
-            exists = any(e['name'] == ex_def['name'] for e in existing)
-
-            if not exists:
-                ex_id = db.add_exercise(
-                    name=ex_def['name'],
-                    description=ex_def['description'],
-                    rep_range_min=ex_def['rep_min'],
-                    rep_range_max=ex_def['rep_max'],
-                    min_weight=ex_def['start_weight'],
-                    pause_duration=ex_def['pause'],
-                    exercise_type=ex_def['type'],
-                    target_sets=ex_def['target_sets'],
-                    weight_increment=ex_def['weight_inc']
-                )
-            else:
-                ex_id = next(e['id'] for e in existing if e['name'] == ex_def['name'])
+            # Übung erstellen (Demo-Daten wurden bereits gelöscht, also keine Duplikate)
+            ex_id = db.add_exercise(
+                name=ex_def['name'],
+                description=ex_def['description'],
+                rep_range_min=ex_def['rep_min'],
+                rep_range_max=ex_def['rep_max'],
+                min_weight=ex_def['start_weight'],
+                pause_duration=ex_def['pause'],
+                exercise_type=ex_def['type'],
+                target_sets=ex_def['target_sets'],
+                weight_increment=ex_def['weight_inc']
+            )
 
             # Übung zu Plan hinzufügen
             db.add_exercise_to_plan(plan_id, ex_id, order_index=i)
