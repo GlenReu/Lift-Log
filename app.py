@@ -1187,44 +1187,39 @@ def statistics_page():
 
 
 def export_page():
-    st.header("Export")
+    # Demo-Modus Toggle (über Export-Bereich)
+    demo_mode = st.toggle("🎓 Test-Modus (für Prüfer)", value=False, key="demo_mode_toggle")
 
-    # Demo-Daten Sektion
-    st.subheader("🎓 Demo-Modus (für Prüfer)")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("📊 Demo-Daten laden", use_container_width=True):
-            with st.spinner("Lade Demo-Trainingsdaten..."):
+    if demo_mode:
+        # Check if demo data exists
+        demo_stats = get_demo_stats(db)
+        if demo_stats['demo_exercises'] == 0:
+            # Auto-load demo data
+            with st.spinner("Lade Demo-Daten..."):
                 try:
-                    num_exercises = load_demo_data(db)
-                    st.success(f"✅ {num_exercises} Demo-Übungen mit 8 Wochen Trainingshistorie geladen!")
-                    st.info("💡 Gehe zu 'Statistiken' um die Daten zu analysieren")
+                    load_demo_data(db)
                     st.rerun()
                 except Exception as e:
                     st.error(f"Fehler beim Laden: {e}")
-
-    with col2:
-        if st.button("🗑️ Demo-Daten löschen", use_container_width=True):
+        else:
+            # Show demo stats
+            st.success(f"📈 **Test-Modus aktiv:** {demo_stats['demo_exercises']} Übungen, "
+                      f"{demo_stats['total_workouts']} Workouts, {demo_stats['total_sets']} Sets")
+            st.info("💡 Gehe zu 'Statistiken' um die Demo-Daten zu analysieren")
+    else:
+        # Check if demo data exists and clear it
+        demo_stats = get_demo_stats(db)
+        if demo_stats['demo_exercises'] > 0:
             with st.spinner("Lösche Demo-Daten..."):
                 try:
-                    num_deleted = clear_demo_data(db)
-                    if num_deleted > 0:
-                        st.success(f"✅ {num_deleted} Demo-Übungen gelöscht")
-                        st.rerun()
-                    else:
-                        st.info("Keine Demo-Daten vorhanden")
+                    clear_demo_data(db)
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Fehler beim Löschen: {e}")
 
-    # Demo-Statistiken anzeigen
-    demo_stats = get_demo_stats(db)
-    if demo_stats['demo_exercises'] > 0:
-        st.info(f"📈 Aktuell geladen: {demo_stats['demo_exercises']} Demo-Übungen, "
-                f"{demo_stats['total_workouts']} Workouts, {demo_stats['total_sets']} Sets")
-
     st.divider()
+
+    st.header("Export")
 
     exercises = db.get_all_exercises()
 
