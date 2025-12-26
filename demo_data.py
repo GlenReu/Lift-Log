@@ -235,8 +235,9 @@ def load_demo_data(db: TrainingDatabase):
             progression_increments = weeks_passed  # Jede Woche +1 Increment
             current_weight = start_weight + (progression_increments * weight_inc)
 
-            # Workout erstellen
-            workout_id = db.create_workout(ex_id, current_plan_id)
+            # Workout erstellen mit historischem Datum
+            workout_date = current_date.strftime('%Y-%m-%d %H:%M:%S')
+            workout_id = db.create_workout(ex_id, current_plan_id, date=workout_date)
 
             # Sets generieren
             num_sets = ex_def['target_sets']

@@ -472,15 +472,32 @@ class TrainingDatabase:
 
     # === Trainingseinheiten (Workouts) ===
 
-    def create_workout(self, exercise_id: int, training_plan_id: Optional[int] = None) -> int:
-        """Erstellt eine neue Trainingseinheit"""
+    def create_workout(self, exercise_id: int, training_plan_id: Optional[int] = None, date: Optional[str] = None) -> int:
+        """Erstellt eine neue Trainingseinheit
+
+        Args:
+            exercise_id: ID der Übung
+            training_plan_id: Optional ID des Trainingsplans
+            date: Optional Datum im Format 'YYYY-MM-DD HH:MM:SS' (für Demo-Daten)
+        """
         conn = self.get_connection()
         cursor = self._cursor(conn)
-        workout_id = self._get_last_insert_id(
-            cursor,
-            "INSERT INTO workouts (exercise_id, training_plan_id) VALUES (?, ?)",
-            (exercise_id, training_plan_id)
-        )
+
+        if date:
+            # Für Demo-Daten mit spezifischem Datum
+            workout_id = self._get_last_insert_id(
+                cursor,
+                "INSERT INTO workouts (exercise_id, training_plan_id, date) VALUES (?, ?, ?)",
+                (exercise_id, training_plan_id, date)
+            )
+        else:
+            # Normaler Workflow mit aktuellem Zeitstempel
+            workout_id = self._get_last_insert_id(
+                cursor,
+                "INSERT INTO workouts (exercise_id, training_plan_id) VALUES (?, ?)",
+                (exercise_id, training_plan_id)
+            )
+
         conn.commit()
         conn.close()
         return workout_id
