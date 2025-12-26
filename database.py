@@ -94,8 +94,29 @@ class TrainingDatabase:
         else:
             cursor.execute(converted_query)
 
+    def _table_exists(self, cursor, table_name: str) -> bool:
+        """Check if a table exists"""
+        if self.is_postgres:
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.tables
+                    WHERE table_name = %s
+                )
+            """, (table_name,))
+            return cursor.fetchone()[0]
+        else:
+            cursor.execute("""
+                SELECT name FROM sqlite_master
+                WHERE type='table' AND name=?
+            """, (table_name,))
+            return cursor.fetchone() is not None
+
     def _column_exists(self, cursor, table_name: str, column_name: str) -> bool:
         """Check if a column exists in a table"""
+        # Erst prüfen ob Tabelle existiert
+        if not self._table_exists(cursor, table_name):
+            return False
+
         if self.is_postgres:
             cursor.execute("""
                 SELECT EXISTS (
