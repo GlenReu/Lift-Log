@@ -22,8 +22,8 @@ from utils import (
 # Seitenkonfiguration
 st.set_page_config(
     page_title="Lift Log",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="centered",  # Besser für Mobile
+    initial_sidebar_state="auto"  # Auf Mobile automatisch eingeklappt
 )
 
 # Datenbank initialisieren
@@ -59,6 +59,30 @@ def format_timer(seconds: int) -> str:
 
 
 def main():
+    # Apple Touch Icon und Web App Meta-Tags (Base64-encoded für Deployment)
+    import base64
+    import os
+
+    icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+    if os.path.exists(icon_path):
+        with open(icon_path, "rb") as f:
+            icon_data = base64.b64encode(f.read()).decode()
+
+        st.markdown(f"""
+            <link rel="apple-touch-icon" href="data:image/png;base64,{icon_data}">
+            <link rel="icon" type="image/png" href="data:image/png;base64,{icon_data}">
+            <meta name="apple-mobile-web-app-capable" content="yes">
+            <meta name="apple-mobile-web-app-status-bar-style" content="black">
+            <meta name="apple-mobile-web-app-title" content="Lift Log">
+        """, unsafe_allow_html=True)
+    else:
+        # Fallback ohne Icon
+        st.markdown("""
+            <meta name="apple-mobile-web-app-capable" content="yes">
+            <meta name="apple-mobile-web-app-status-bar-style" content="black">
+            <meta name="apple-mobile-web-app-title" content="Lift Log">
+        """, unsafe_allow_html=True)
+
     # Custom CSS für Schriftart und Sidebar-Styling
     st.markdown("""
         <style>
@@ -91,6 +115,42 @@ def main():
         .stButton,
         .stSelectbox label {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+
+        /* Mobile Optimierungen */
+        @media (max-width: 768px) {
+            /* Größere Touch-Targets für Buttons */
+            .stButton > button {
+                min-height: 48px !important;
+                font-size: 16px !important;
+                padding: 12px 20px !important;
+            }
+
+            /* Inputs größer und besser lesbar */
+            .stTextInput input,
+            .stNumberInput input,
+            .stSelectbox select {
+                font-size: 16px !important;
+                min-height: 48px !important;
+            }
+
+            /* Metrics größer auf Mobile */
+            [data-testid="stMetricValue"] {
+                font-size: 24px !important;
+            }
+
+            /* Expander leichter klickbar */
+            details summary {
+                min-height: 48px !important;
+                padding: 12px !important;
+                font-size: 16px !important;
+            }
+
+            /* Verhindere horizontales Scrollen */
+            .main {
+                max-width: 100vw;
+                overflow-x: hidden;
+            }
         }
 
         /* Sidebar Radio Buttons ohne Punkte */
@@ -232,14 +292,15 @@ def exercises_page():
         st.info("Keine Übungen vorhanden")
     else:
         for ex in exercises:
-            type_labels = {'compound': '🏋️ Compound', 'isolation': '💪 Isolation', 'machine': '🤖 Maschine'}
-            type_label = type_labels.get(ex.get('exercise_type', 'compound'), '🏋️ Compound')
+            type_labels = {'compound': 'C', 'isolation': 'I', 'machine': 'M'}
+            type_label = type_labels.get(ex.get('exercise_type', 'compound'), 'C')
 
-            with st.expander(f"{type_label} - {ex['name']}", expanded=False):
+            with st.expander(f"[{type_label}] {ex['name']}", expanded=False):
                 # Details anzeigen
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.markdown(f"**Typ:** {type_label}")
+                    type_full = {'compound': 'Compound', 'isolation': 'Isolation', 'machine': 'Maschine'}
+                    st.markdown(f"**Typ:** [{type_label}] {type_full.get(ex.get('exercise_type', 'compound'), 'Compound')}")
                     st.markdown(f"**Rep-Range:** {ex.get('rep_range_min', 5)}-{ex.get('rep_range_max', 12)} Reps")
                     st.markdown(f"**Ziel-Sets:** {ex.get('target_sets', 3)}")
                 with col2:
