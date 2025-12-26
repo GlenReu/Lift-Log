@@ -89,32 +89,17 @@ def main():
         /* Aptos Mono Schriftart */
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;600;700&display=swap');
 
-        /* Monospace NUR für spezifische Content-Elemente (NICHT für UI-Elemente) */
-        .stMarkdown p,
-        .stMarkdown h1,
-        .stMarkdown h2,
-        .stMarkdown h3,
-        .stMarkdown h4,
-        .stMarkdown h5,
-        .stMarkdown h6,
-        .stMarkdown li,
-        .stTextInput input,
-        .stNumberInput input,
-        .stTextArea textarea,
-        [data-testid="stMetricLabel"],
-        [data-testid="stMetricValue"],
-        .stDataFrame,
-        .stTable {
+        /* Aptos Mono für ALLE Texte */
+        html, body, * {
             font-family: 'Aptos Mono', 'Roboto Mono', 'Courier New', monospace !important;
         }
 
-        /* UI-Elemente bleiben bei System-Font (für Icons) */
-        button, select, details, summary,
-        [data-baseweb],
-        [role="button"],
-        .stButton,
-        .stSelectbox label {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        /* Material Icons behalten ihre Schriftart (für Arrows, etc.) */
+        .material-icons,
+        [class*="material-icons"],
+        span[class*="icon"],
+        svg {
+            font-family: 'Material Icons' !important;
         }
 
         /* Mobile Optimierungen */
